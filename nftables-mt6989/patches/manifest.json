@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "patches": {
+    "0001-preserve-struct-net-move-gencursor-to-pernet.patch": {
+      "sha256": "6937b60242f1fac00ecfd6d5ae110a9863ee87f39135aed8281aa8d8ff21e18b"
+    },
+    "0002-nft-chain-nat-inet-family-ops-adapter.patch": {
+      "sha256": "60af1e13ed162d6b79123d6048551de25a2a635946a9aca49670e1d8a49d0581"
+    }
+  }
+}

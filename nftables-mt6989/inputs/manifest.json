@@ -1,0 +1,29 @@
+{
+  "kernel": {
+    "url": "https://github.com/OnePlusOSS/android_kernel_oneplus_mt6989.git",
+    "commit": "b1ea2c8ce2ef0f73927a593aa450f88143e3584a",
+    "local_source": null
+  },
+  "reference": {
+    "url": "https://github.com/NEURAX-FX/scx-leak-hotfix-mt6989.git",
+    "commit": "15e6d470b11b4e9bb2fff5a96e5b658c74871bbf"
+  },
+  "vendor": {
+    "url": "https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6989.git",
+    "commit": "e7320c9131c8fa539dc0e3899e7c81eba901da21",
+    "branch": "oneplus/mt6989_v_15.0.2_ace5_race"
+  },
+  "toolchain": {
+    "url": "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android14-release/clang-r487747c.tar.gz",
+    "sha256": "d525bf213eff147c33e6f4736a9cd895e1fa86ac58509b3f5d076df762bafc33",
+    "revision": "r487747c",
+    "clang_sha256": "6b0fedc031f936640c058fe19096b7c76ea0504fca1e2434999868d7fe0e968a"
+  },
+  "inputs": {
+    "target.config": "02afd1a2394053e3c53b43650e602256e933f966dd56e0bcd4324c7509dac5fa",
+    "Module.symvers": "fab1af59397cb4c2dfc900f0c08e5ee32f660d6aa9113481528fa9c1d0f71a96"
+  },
+  "target_release": "6.1.115-android14-oki-xiaoxiaow",
+  "expected_vermagic": "6.1.115-android14-oki-xiaoxiaow SMP preempt mod_unload modversions aarch64",
+  "provenance": "The target config and Module.symvers must be supplied by the user; they are not published in this repository. The config originally came from the reference project's ci/ directory, and the symbol table from the target device. Their pinned SHA256 values above are used to reject mismatched inputs, so keep the originals unchanged. Copy them to inputs/target.config and inputs/Module.symvers before running prepare.sh. This repository pins the public upstream kernel source, not a device image."
+}

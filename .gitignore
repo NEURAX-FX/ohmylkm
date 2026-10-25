@@ -1,0 +1,56 @@
+# ---- private / device-specific inputs (never publish) -----------------------
+# Original device kernel image and everything recovered from it.
+boot.img
+Module.symvers
+nftables-mt6989/inputs/Module.symvers
+nftables-mt6989/inputs/boot-image/
+# ABI evidence derived from the private image (offsets, hashes, kallsyms dump).
+nftables-mt6989/reports/abi-port-layout-inputs.json
+nftables-mt6989/reports/abi-port-layout-probe.btf
+nftables-mt6989/reports/abi-port-layout-probe.dump
+nftables-mt6989/reports/boot-image-evidence.json
+nftables-mt6989/reports/layout-comparison.json
+nftables-mt6989/reports/abi-input-evidence.json
+nftables-mt6989/reports/abi-input-evidence.md
+nftables-mt6989/reports/abi-port-source-smoke.json
+nftables-mt6989/reports/abi-port-lifecycle-smoke.json
+
+# ---- build products (reproducible; binaries not committed) ------------------
+nftables-mt6989/work/
+nftables-mt6989/output/
+nftables-mt6989/dist/
+nftables-mt6989/*.tar.gz
+nftables-mt6989/*.zip
+nftables-mt6989/magisk/*.zip
+nftables-mt6989/reports/logs/
+# Reports that quote boot.img / Image / BTF identities of the private device.
+nftables-mt6989/reports/abi-port-verification.md
+nftables-mt6989/reports/abi-port-verification.json
+nftables-mt6989/reports/progress.md
+nftables-mt6989/reports/abi-port-artifact-sha256.json
+nftables-mt6989/reports/abi-port-built-module-exports.symvers
+nftables-mt6989/reports/abi-port-build-results.json
+nftables-mt6989/reports/abi-port.config
+nftables-mt6989/reports/abi-port-config.diff
+nftables-mt6989/reports/nftables.config
+nftables-mt6989/reports/baseline.config
+nftables-mt6989/reports/nftables-config.diff
+nftables-mt6989/reports/baseline-config.diff
+nftables-mt6989/reports/build-results.json
+nftables-mt6989/reports/built-module-exports.symvers
+nftables-mt6989/reports/artifact-sha256.txt
+nftables-mt6989/reports/source-check.json
+nftables-mt6989/reports/abi-port-source.json
+nftables-mt6989/reports/abi-port-build-results.json
+nftables-mt6989/reports/quick-verify*.log
+nftables-mt6989/reports/quick-verify*.status
+
+# ---- caches / editor / tooling ---------------------------------------------
+.codegraph/
+__pycache__/
+*.pyc
+*.o
+*.ko
+*.mod
+*.cmd
+.DS_Store

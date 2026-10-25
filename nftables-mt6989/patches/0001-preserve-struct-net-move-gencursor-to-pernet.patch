@@ -1,0 +1,122 @@
+--- a/include/net/net_namespace.h
++++ b/include/net/net_namespace.h
+@@ -29,7 +29,6 @@
+ #if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+ #include <net/netns/flow_table.h>
+ #endif
+-#include <net/netns/nftables.h>
+ #include <net/netns/xfrm.h>
+ #include <net/netns/mpls.h>
+ #include <net/netns/can.h>
+@@ -141,9 +140,6 @@
+ 	struct netns_nf		nf;
+ #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
+ 	struct netns_ct		ct;
+-#endif
+-#if defined(CONFIG_NF_TABLES) || defined(CONFIG_NF_TABLES_MODULE)
+-	struct netns_nftables	nft;
+ #endif
+ #if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+ 	struct netns_ft ft;
+--- a/include/net/netfilter/nf_tables.h
++++ b/include/net/netfilter/nf_tables.h
+@@ -1457,9 +1459,31 @@
+  * it is set inactive in the next generation. After committing the ruleset,
+  * the objects are removed.
+  */
++struct nftables_pernet {
++	struct list_head	tables;
++	struct list_head	commit_list;
++	struct list_head	binding_list;
++	struct list_head	module_list;
++	struct list_head	notify_list;
++	struct mutex		commit_mutex;
++	u64			table_handle;
++	u64			tstamp;
++	unsigned int		base_seq;
++	u8			validate_state;
++	unsigned int		gc_seq;
++	u8			gencursor;
++};
++
++extern unsigned int nf_tables_net_id;
++
++static inline struct nftables_pernet *nft_pernet(const struct net *net)
++{
++	return net_generic(net, nf_tables_net_id);
++}
++
+ static inline unsigned int nft_gencursor_next(const struct net *net)
+ {
+-	return net->nft.gencursor + 1 == 1 ? 1 : 0;
++	return nft_pernet(net)->gencursor + 1 == 1 ? 1 : 0;
+ }
+ 
+ static inline u8 nft_genmask_next(const struct net *net)
+@@ -1470,7 +1494,7 @@
+ static inline u8 nft_genmask_cur(const struct net *net)
+ {
+ 	/* Use READ_ONCE() to prevent refetching the value for atomicity */
+-	return 1 << READ_ONCE(net->nft.gencursor);
++	return 1 << READ_ONCE(nft_pernet(net)->gencursor);
+ }
+ 
+ #define NFT_GENMASK_ANY		((1 << 0) | (1 << 1))
+@@ -1727,27 +1751,6 @@
+ static inline int nft_request_module(struct net *net, const char *fmt, ...) { return -ENOENT; }
+ #endif
+ 
+-struct nftables_pernet {
+-	struct list_head	tables;
+-	struct list_head	commit_list;
+-	struct list_head	binding_list;
+-	struct list_head	module_list;
+-	struct list_head	notify_list;
+-	struct mutex		commit_mutex;
+-	u64			table_handle;
+-	u64			tstamp;
+-	unsigned int		base_seq;
+-	u8			validate_state;
+-	unsigned int		gc_seq;
+-};
+-
+-extern unsigned int nf_tables_net_id;
+-
+-static inline struct nftables_pernet *nft_pernet(const struct net *net)
+-{
+-	return net_generic(net, nf_tables_net_id);
+-}
+-
+ static inline u64 nft_net_tstamp(const struct net *net)
+ {
+ 	return nft_pernet(net)->tstamp;
+--- a/net/netfilter/nf_tables_api.c
++++ b/net/netfilter/nf_tables_api.c
+@@ -9731,7 +9732,7 @@
+ 	gc_seq = nft_gc_seq_begin(nft_net);
+ 
+ 	/* step 3. Start new generation, rules_gen_X now in use. */
+-	net->nft.gencursor = nft_gencursor_next(net);
++	WRITE_ONCE(nft_pernet(net)->gencursor, nft_gencursor_next(net));
+ 
+ 	list_for_each_entry_safe(trans, next, &nft_net->commit_list, list) {
+ 		nf_tables_commit_audit_collect(&adl, trans->ctx.table,
+@@ -10831,6 +10832,7 @@
+ 	nft_net->base_seq = 1;
+ 	nft_net->validate_state = NFT_VALIDATE_SKIP;
+ 	nft_net->gc_seq = 0;
++	nft_pernet(net)->gencursor = 0;
+ 
+ 	return 0;
+ }
+--- a/net/netfilter/nf_tables_core.c
++++ b/net/netfilter/nf_tables_core.c
+@@ -234,7 +234,7 @@
+ 	struct nft_regs regs = {};
+ 	unsigned int stackptr = 0;
+ 	struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
+-	bool genbit = READ_ONCE(net->nft.gencursor);
++	bool genbit = READ_ONCE(nft_pernet(net)->gencursor);
+ 	struct nft_rule_blob *blob;
+ 	struct nft_traceinfo info;
+ 

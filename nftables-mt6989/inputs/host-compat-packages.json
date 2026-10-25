@@ -1,0 +1,6 @@
+{
+  "glibc-devel": {
+    "url": "https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/glibc-devel-2.41-1.fc42.x86_64.rpm",
+    "sha256": "b386558a3fbb08e899c0cd93e9a23e5a5e9643066813150a98763c1662d3994c"
+  }
+}

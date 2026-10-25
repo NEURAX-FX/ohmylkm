@@ -1,0 +1,86 @@
+--- a/include/net/netfilter/nf_tables.h
++++ b/include/net/netfilter/nf_tables.h
+@@ -1089,6 +1089,7 @@
+  * 	@hooks: array of hook functions
+  *	@ops_register: base chain register function
+  *	@ops_unregister: base chain unregister function
++ *	@chain_alloc_size: base chain allocation size, including private state
+  */
+ struct nft_chain_type {
+ 	const char			*name;
+@@ -1099,6 +1100,7 @@
+ 	nf_hookfn			*hooks[NFT_MAX_HOOKS];
+ 	int				(*ops_register)(struct net *net, const struct nf_hook_ops *ops);
+ 	void				(*ops_unregister)(struct net *net, const struct nf_hook_ops *ops);
++	unsigned int			chain_alloc_size;
+ };
+ 
+ int nft_chain_validate_dependency(const struct nft_chain *chain,
+--- a/net/netfilter/nf_tables_api.c
++++ b/net/netfilter/nf_tables_api.c
+@@ -2402,7 +2402,8 @@
+ 		if (err < 0)
+ 			return err;
+ 
+-		basechain = kzalloc(sizeof(*basechain), GFP_KERNEL_ACCOUNT);
++		basechain = kzalloc(hook.type->chain_alloc_size ?: sizeof(*basechain),
++				    GFP_KERNEL_ACCOUNT);
+ 		if (basechain == NULL) {
+ 			nft_chain_release_hook(&hook);
+ 			return -ENOMEM;
+--- a/net/netfilter/nft_chain_nat.c
++++ b/net/netfilter/nft_chain_nat.c
+@@ -75,14 +75,43 @@
+ #endif
+ 
+ #ifdef CONFIG_NF_TABLES_INET
++struct nft_nat_inet_chain {
++	struct nft_base_chain basechain;
++	struct nf_hook_ops ipv4_ops;
++	struct nf_hook_ops ipv6_ops;
++};
++static_assert(offsetof(struct nft_nat_inet_chain, basechain) == 0);
++
+ static int nft_nat_inet_reg(struct net *net, const struct nf_hook_ops *ops)
+ {
+-	return nf_nat_inet_register_fn(net, ops);
++	struct nft_nat_inet_chain *chain;
++	int ret;
++
++	if (WARN_ON_ONCE(ops->pf != NFPROTO_INET))
++		return -EINVAL;
++
++	chain = container_of(ops, struct nft_nat_inet_chain, basechain.ops);
++	chain->ipv6_ops = *ops;
++	chain->ipv6_ops.pf = NFPROTO_IPV6;
++	ret = nf_nat_ipv6_register_fn(net, &chain->ipv6_ops);
++	if (ret)
++		return ret;
++
++	chain->ipv4_ops = *ops;
++	chain->ipv4_ops.pf = NFPROTO_IPV4;
++	ret = nf_nat_ipv4_register_fn(net, &chain->ipv4_ops);
++	if (ret)
++		nf_nat_ipv6_unregister_fn(net, &chain->ipv6_ops);
++	return ret;
+ }
+ 
+ static void nft_nat_inet_unreg(struct net *net, const struct nf_hook_ops *ops)
+ {
+-	nf_nat_inet_unregister_fn(net, ops);
++	struct nft_nat_inet_chain *chain;
++
++	chain = container_of(ops, struct nft_nat_inet_chain, basechain.ops);
++	nf_nat_ipv4_unregister_fn(net, &chain->ipv4_ops);
++	nf_nat_ipv6_unregister_fn(net, &chain->ipv6_ops);
+ }
+ 
+ static const struct nft_chain_type nft_chain_nat_inet = {
+@@ -90,6 +119,7 @@
+ 	.type		= NFT_CHAIN_T_NAT,
+ 	.family		= NFPROTO_INET,
+ 	.owner		= THIS_MODULE,
++	.chain_alloc_size = sizeof(struct nft_nat_inet_chain),
+ 	.hook_mask	= (1 << NF_INET_PRE_ROUTING) |
+ 			  (1 << NF_INET_LOCAL_IN) |
+ 			  (1 << NF_INET_LOCAL_OUT) |

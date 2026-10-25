@@ -1,0 +1,6 @@
+id=nftables-mt6989
+name=MT6989 nftables LKM
+version=1.0
+versionCode=1
+author=ohmylkm
+description=Loads adapted native nftables kernel modules (nf_tables + nft_*) for MediaTek MT6989 / OnePlus Ace 5 on module load failure (post-fs-data). Required by Droidspaces/ImmortalWrt firewall4 and inet NAT.

@@ -1,0 +1,46 @@
+{
+  "bc": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/b/bc-1.08.2-4.fc44.x86_64.rpm",
+    "sha256": "b3f4c6562a0e3472136f6cbe789d18472da2a576ead39914988b8af1c487b82a"
+  },
+  "bison": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/b/bison-3.8.2-15.fc44.x86_64.rpm",
+    "sha256": "2ad7321bdc69f56041c7362babf904a83c5bb887461a7785fd806a15f48ae3e0"
+  },
+  "dwarves": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/d/dwarves-1.30-3.fc44.x86_64.rpm",
+    "sha256": "d205610ad1d38cc4a6428760f3d44fcdb581e9786187a48ab7700ccbf3ccb27d"
+  },
+  "elfutils-libelf": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/e/elfutils-libelf-0.194-5.fc44.x86_64.rpm",
+    "sha256": "c6e88a9939475529c00f67d9f376ccfeaacc582696e01a63c92ee89c481090cb"
+  },
+  "elfutils-libs": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/e/elfutils-libs-0.194-5.fc44.x86_64.rpm",
+    "sha256": "f538129f345b2150b1b3445e69910128d545fbfc8024f363c2b33e9a7307e534"
+  },
+  "flex": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/f/flex-2.6.4-24.fc44.x86_64.rpm",
+    "sha256": "4d20c60324e06ec79b384a0eca98291a47201b2692187f4c358c65695610e9ce"
+  },
+  "libbpf": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/l/libbpf-1.6.3-1.fc44.x86_64.rpm",
+    "sha256": "1c06ae3b08dbfe01d53d65825f5c4b6d593ae71f430759e76ee72f299de7ff3b"
+  },
+  "libzstd": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/l/libzstd-1.5.7-5.fc44.x86_64.rpm",
+    "sha256": "af98832cf1d93eabb442d18520bad10f03f4278a99d54c5d071b2903f6f50fac"
+  },
+  "m4": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/m/m4-1.4.21-1.fc44.x86_64.rpm",
+    "sha256": "5b30ee589ca1fbbc7a588b2a1610e6a788ba909e7d44418840c72f6516608179"
+  },
+  "libdwarves1": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/l/libdwarves1-1.30-3.fc44.x86_64.rpm",
+    "sha256": "4953ae8493599e5ef95f339f342e9b192f151290ed1560cb5660aa58d0b0ad5d"
+  },
+  "openssl-devel-engine": {
+    "url": "https://mirrors.kernel.org/fedora/releases/44/Everything/x86_64/os/Packages/o/openssl-devel-engine-3.5.5-1.fc44.x86_64.rpm",
+    "sha256": "972b23987e0a28e6c7308212927d3096160bdf054a0fc806ab8b6a6e03aff511"
+  }
+}
