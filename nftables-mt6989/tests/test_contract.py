@@ -32,6 +32,16 @@ class ContractTests(unittest.TestCase):
             LIB.preserve_host_config(original, dict(original, CONFIG_NF_CONNTRACK_LABELS='y'))
         LIB.preserve_host_config(original, dict(original, CONFIG_NF_TABLES='m'))
 
+    def test_only_module_flowtable_configuration_is_allowed(self):
+        original = {'CONFIG_NF_FLOW_TABLE': 'n', 'CONFIG_NF_FLOW_TABLE_INET': 'n',
+                    'CONFIG_NF_FLOW_TABLE_PROCFS': 'n', 'CONFIG_NF_CONNTRACK_LABELS': 'n'}
+        enabled = dict(original, CONFIG_NF_FLOW_TABLE='m', CONFIG_NF_FLOW_TABLE_INET='m')
+        LIB.preserve_host_config(original, enabled)
+        for key, value in (('CONFIG_NF_FLOW_TABLE', 'y'), ('CONFIG_NF_FLOW_TABLE_PROCFS', 'y'),
+                           ('CONFIG_NF_CONNTRACK_LABELS', 'y')):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LIB.preserve_host_config(original, dict(enabled, **{key: value}))
+
     def test_disabled_config_parsed(self):
         self.need()
         self.assertEqual(LIB.parse_config('# CONFIG_NF_TABLES is not set\nCONFIG_NF_NAT=y\n'), {'CONFIG_NF_TABLES':'n', 'CONFIG_NF_NAT':'y'})

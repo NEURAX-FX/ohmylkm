@@ -47,6 +47,8 @@ targets = [('net/netfilter', name) for name in (
 targets += [(f'net/{family}/netfilter', f'nft_{expr}_{family}')
             for family in ('ipv4', 'ipv6') for expr in ('fib', 'reject')]
 targets += [('net/netfilter', 'nft_fib_inet'), ('net/netfilter', 'nft_reject_inet')]
+targets += [('net/netfilter', name) for name in (
+    'nf_flow_table', 'nf_flow_table_inet', 'nft_flow_offload')]
 for directory, name in targets:
     source = b.ABI_KERNEL / directory
     args = ['M=' + str(source), name + '.ko']

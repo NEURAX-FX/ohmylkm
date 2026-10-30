@@ -1,5 +1,17 @@
 # Symbol and dependency report — adapted modules
 
+## Software flow offload extension (19 modules)
+
+Current totals: 485 version records, 466 strong undefined-import checks,
+82 real module exports. The earlier 16-module counts below are historical.
+`nf_flow_table` provides 17 exports and has only builtin host dependencies;
+`nf_flow_table_inet` and `nft_flow_offload` depend on `nf_flow_table` and
+`nf_tables`. The core now exports its genuine GPL `nf_tables_net_id`, needed
+by the expression's per-net generation access. Its absence from the original
+host table is expected: the provider is the new core module, with a real
+modpost-generated version, not a fabricated host export. All dependencies and
+CRCs resolve in the current set; do not use the old core with the new expression.
+
 ## 已观察到的导出与版本
 
 - 宿主：原始恢复 `inputs/Module.symvers` 共 15242 行，SHA256 `fab1af59397cb4c2dfc900f0c08e5ee32f660d6aa9113481528fa9c1d0f71a96`。它与 boot Image 独立恢复结果逐字节一致，15242/15242 导出地址与 Image kallsyms 一致；不是重新编译出的宿主表。

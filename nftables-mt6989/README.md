@@ -5,8 +5,7 @@ Source-compatible `nf_tables`/`nft_*` kernel modules for MediaTek MT6989
 Android Clang r487747c.
 
 The target device kernel was built with `CONFIG_NF_TABLES=n`. Loading stock
-upstream modules would fail for two structural reasons, both fixed by this
-project:
+upstream modules would fail without these source adaptations:
 
 1. Enabling `NF_TABLES` normally inserts `netns_nftables` into `struct net`,
    shifting host-owned fields. The module copy keeps the host layout and moves
@@ -15,6 +14,11 @@ project:
    `nf_nat_inet_register_fn`/`nf_nat_inet_unregister_fn`. The inet NAT chain
    adapter uses the exported IPv4/IPv6 registration functions with stable
    per-chain hook-ops copies, correct rollback and unregistration.
+3. `NF_FLOW_TABLE=m` also changes `struct net` and TCP/UDP conntrack
+   namespace layouts. Flow statistics and offload timeouts are kept in the
+   flowtable module's own per-net allocation instead; host conntrack is not
+   rebuilt. The core exports its real `nf_tables_net_id` for the flow-offload
+   expression's private generation access.
 
 No host kernel code is patched at runtime, no symbol CRC is forged and no
 module is force-loaded.
@@ -31,10 +35,9 @@ module is force-loaded.
 
 `inputs/manifest.json` contains URLs, commit IDs and SHA256 pins.
 
-The following are intentionally **not** committed and must be supplied
-locally:
-
-- `inputs/target.config` — target kernel configuration
+The target configuration `inputs/target.config` is included from the public
+reference project. These device-specific inputs are intentionally **not**
+committed and must be supplied locally:
 - `inputs/Module.symvers` — original target export table
 - `inputs/boot-image/target.btf`, `target.kallsyms`, `Image` — needed only by
   the full ABI verifier, not by compilation
@@ -55,7 +58,7 @@ JOBS=2 ./scripts/prepare.sh
 JOBS=2 ./scripts/build.sh
 ```
 
-`prepare.sh` validates inputs, creates both build configurations, runs
+`prepare.sh` validates inputs, creates the isolated patched build, runs
 `olddefconfig` and `modules_prepare`, and stores the original export table.
 `build.sh` builds the selected modules with native Kbuild and `-j2`.
 
@@ -72,7 +75,31 @@ Modules built:
 `nf_tables`, `nft_ct`, `nft_nat`, `nft_chain_nat`, `nft_masq`, `nft_limit`,
 `nft_redir`, `nft_log`, `nft_fib`, `nft_reject`, `nft_fib_ipv4`,
 `nft_reject_ipv4`, `nft_fib_ipv6`, `nft_reject_ipv6`, `nft_fib_inet`,
-`nft_reject_inet`.
+`nft_reject_inet`, `nf_flow_table`, `nf_flow_table_inet`, `nft_flow_offload`.
+
+## Software flow offloading
+
+The new 19-module build includes the full fw4 inet flowtable path:
+`nf_flow_table.ko` -> `nf_flow_table_inet.ko` -> `nft_flow_offload.ko`.
+The source Kconfig calls the expression a hardware-offload module, but it is
+also needed for software `flow add`; hardware acceleration is a separate
+flowtable flag and is not enabled by this package.
+
+Both TCP and UDP offload idle timeouts retain the upstream 30-second defaults
+in module-private per-net storage. The host was built without the associated
+sysctl fields, so `nf_flowtable_tcp_timeout`/`nf_flowtable_udp_timeout` are not
+exposed by this port. Existing host conntrack timeouts remain unchanged.
+`NF_FLOW_TABLE_PROCFS=n` keeps optional flowtable proc statistics disabled.
+
+Loading modules only makes the feature available. In ImmortalWrt, enable
+firewall4 software flow offloading separately; leave hardware offloading off
+unless the actual host drivers have been independently validated. No nft
+rules, UCI settings or device interfaces are changed by the loader.
+
+The previous working basic 16-module artifacts were retained locally under
+`output/basic-16/`. The new expression imports a new genuine core export:
+use the new `nf_tables.ko` with it, not the previous core alone. New software
+flow packet-path behavior has not been exercised on the phone by these tools.
 
 ## Verification
 
@@ -102,7 +129,8 @@ The flashable module source lives in `magisk/nftables-mt6989/`. It contains:
 
 - `module.prop`
 - `customize.sh`
-- `post-fs-data.sh` — loads modules in dependency order at `post-fs-data`
+- `post-fs-data.sh` — loads 19 modules in dependency order at `post-fs-data`
+- `META-INF/com/google/android/update-binary` — standard Magisk installer hook
 - `system/lib/modules/*.ko` (populate from `output/abi-port/`)
 
 `post-fs-data.sh` skips modules already present, is idempotent per boot via
@@ -115,8 +143,12 @@ Build the zip after copying the desired modules:
 ```sh
 cp output/abi-port/*.ko magisk/nftables-mt6989/system/lib/modules/
 cd magisk/nftables-mt6989
-zip -r -X ../nftables-mt6989-magisk.zip module.prop customize.sh post-fs-data.sh system
+zip -r -X ../nftables-mt6989-magisk-v1.1-flow-offload.zip module.prop customize.sh post-fs-data.sh META-INF system
 ```
+
+The ZIP is flashable only when Magisk is installed; its standard
+`update-binary` hook delegates to `/data/adb/magisk/util_functions.sh`.
+Installing through the Magisk/KernelSU app also works.
 
 Install through Magisk/KernelSU and reboot. The repository itself does not
 ship compiled modules or zip files.

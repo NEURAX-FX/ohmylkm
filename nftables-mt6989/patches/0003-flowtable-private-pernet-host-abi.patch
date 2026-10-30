@@ -1,0 +1,292 @@
+--- a/include/net/net_namespace.h
++++ b/include/net/net_namespace.h
+@@ -26,9 +26,6 @@
+ #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
+ #include <net/netns/conntrack.h>
+ #endif
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-#include <net/netns/flow_table.h>
+-#endif
+ #include <net/netns/xfrm.h>
+ #include <net/netns/mpls.h>
+ #include <net/netns/can.h>
+@@ -140,9 +137,6 @@
+ 	struct netns_nf		nf;
+ #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
+ 	struct netns_ct		ct;
+-#endif
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	struct netns_ft ft;
+ #endif
+ #endif
+ #ifdef CONFIG_WEXT_CORE
+--- a/include/net/netns/conntrack.h
++++ b/include/net/netns/conntrack.h
+@@ -28,9 +28,6 @@
+ 	u8 tcp_be_liberal;
+ 	u8 tcp_max_retrans;
+ 	u8 tcp_ignore_invalid_rst;
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	unsigned int offload_timeout;
+-#endif
+ };
+ 
+ enum udp_conntrack {
+@@ -41,9 +38,6 @@
+ 
+ struct nf_udp_net {
+ 	unsigned int timeouts[UDP_CT_MAX];
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	unsigned int offload_timeout;
+-#endif
+ };
+ 
+ struct nf_icmp_net {
+--- a/include/net/netns/flow_table.h
++++ b/include/net/netns/flow_table.h
+@@ -10,5 +10,7 @@
+ 
+ struct netns_ft {
+ 	struct nf_flow_table_stat __percpu *stat;
++	unsigned int tcp_offload_timeout;
++	unsigned int udp_offload_timeout;
+ };
+ #endif
+--- a/include/net/netfilter/nf_flow_table.h
++++ b/include/net/netfilter/nf_flow_table.h
+@@ -12,6 +12,15 @@
+ #include <net/dst.h>
+ #include <linux/if_pppox.h>
+ #include <linux/ppp_defs.h>
++#include <net/netns/generic.h>
++#include <net/netns/flow_table.h>
++
++extern unsigned int nf_flow_table_net_id;
++
++static inline struct netns_ft *nf_flow_table_pernet(const struct net *net)
++{
++	return net_generic(net, nf_flow_table_net_id);
++}
+ 
+ struct nf_flowtable;
+ struct nf_flow_rule;
+@@ -361,12 +370,12 @@
+ 	return true;
+ }
+ 
+-#define NF_FLOW_TABLE_STAT_INC(net, count) __this_cpu_inc((net)->ft.stat->count)
+-#define NF_FLOW_TABLE_STAT_DEC(net, count) __this_cpu_dec((net)->ft.stat->count)
+-#define NF_FLOW_TABLE_STAT_INC_ATOMIC(net, count)	\
+-	this_cpu_inc((net)->ft.stat->count)
+-#define NF_FLOW_TABLE_STAT_DEC_ATOMIC(net, count)	\
+-	this_cpu_dec((net)->ft.stat->count)
++#define NF_FLOW_TABLE_STAT_INC(net, count) __this_cpu_inc(nf_flow_table_pernet(net)->stat->count)
++#define NF_FLOW_TABLE_STAT_DEC(net, count) __this_cpu_dec(nf_flow_table_pernet(net)->stat->count)
++#define NF_FLOW_TABLE_STAT_INC_ATOMIC(net, count) \
++	this_cpu_inc(nf_flow_table_pernet(net)->stat->count)
++#define NF_FLOW_TABLE_STAT_DEC_ATOMIC(net, count) \
++	this_cpu_dec(nf_flow_table_pernet(net)->stat->count)
+ 
+ #ifdef CONFIG_NF_FLOW_TABLE_PROCFS
+ int nf_flow_table_init_proc(struct net *net);
+--- a/net/netfilter/nf_flow_table_core.c
++++ b/net/netfilter/nf_flow_table_core.c
+@@ -17,6 +17,8 @@
+ static DEFINE_MUTEX(flowtable_lock);
+ static LIST_HEAD(flowtables);
+ 
++unsigned int nf_flow_table_net_id;
++
+ static void
+ flow_offload_fill_dir(struct flow_offload *flow,
+ 		      enum flow_offload_tuple_dir dir)
+@@ -183,12 +185,12 @@
+ 		flow_offload_fixup_tcp(&ct->proto.tcp);
+ 
+ 		timeout = tn->timeouts[ct->proto.tcp.state];
+-		timeout -= tn->offload_timeout;
++		timeout -= nf_flow_table_pernet(net)->tcp_offload_timeout;
+ 	} else if (l4num == IPPROTO_UDP) {
+ 		struct nf_udp_net *tn = nf_udp_pernet(net);
+ 
+ 		timeout = tn->timeouts[UDP_CT_REPLIED];
+-		timeout -= tn->offload_timeout;
++		timeout -= nf_flow_table_pernet(net)->udp_offload_timeout;
+ 	} else {
+ 		return;
+ 	}
+@@ -260,15 +262,10 @@
+ 	struct net *net = nf_ct_net(flow->ct);
+ 	int l4num = nf_ct_protonum(flow->ct);
+ 
+-	if (l4num == IPPROTO_TCP) {
+-		struct nf_tcp_net *tn = nf_tcp_pernet(net);
+-
+-		timeout = tn->offload_timeout;
+-	} else if (l4num == IPPROTO_UDP) {
+-		struct nf_udp_net *tn = nf_udp_pernet(net);
+-
+-		timeout = tn->offload_timeout;
+-	}
++	if (l4num == IPPROTO_TCP)
++		timeout = nf_flow_table_pernet(net)->tcp_offload_timeout;
++	else if (l4num == IPPROTO_UDP)
++		timeout = nf_flow_table_pernet(net)->udp_offload_timeout;
+ 
+ 	return timeout;
+ }
+@@ -616,13 +613,17 @@
+ 
+ static int nf_flow_table_init_net(struct net *net)
+ {
+-	net->ft.stat = alloc_percpu(struct nf_flow_table_stat);
+-	return net->ft.stat ? 0 : -ENOMEM;
++	struct netns_ft *ft = nf_flow_table_pernet(net);
++
++	ft->tcp_offload_timeout = 30 * HZ;
++	ft->udp_offload_timeout = 30 * HZ;
++	ft->stat = alloc_percpu(struct nf_flow_table_stat);
++	return ft->stat ? 0 : -ENOMEM;
+ }
+ 
+ static void nf_flow_table_fini_net(struct net *net)
+ {
+-	free_percpu(net->ft.stat);
++	free_percpu(nf_flow_table_pernet(net)->stat);
+ }
+ 
+ static int nf_flow_table_pernet_init(struct net *net)
+@@ -657,6 +658,8 @@
+ static struct pernet_operations nf_flow_table_net_ops = {
+ 	.init = nf_flow_table_pernet_init,
+ 	.exit_batch = nf_flow_table_pernet_exit,
++	.id = &nf_flow_table_net_id,
++	.size = sizeof(struct netns_ft),
+ };
+ 
+ static int __init nf_flow_table_module_init(void)
+--- a/net/netfilter/nf_flow_table_procfs.c
++++ b/net/netfilter/nf_flow_table_procfs.c
+@@ -15,7 +15,7 @@
+ 		if (!cpu_possible(cpu))
+ 			continue;
+ 		*pos = cpu + 1;
+-		return per_cpu_ptr(net->ft.stat, cpu);
++		return per_cpu_ptr(nf_flow_table_pernet(net)->stat, cpu);
+ 	}
+ 
+ 	return NULL;
+@@ -30,7 +30,7 @@
+ 		if (!cpu_possible(cpu))
+ 			continue;
+ 		*pos = cpu + 1;
+-		return per_cpu_ptr(net->ft.stat, cpu);
++		return per_cpu_ptr(nf_flow_table_pernet(net)->stat, cpu);
+ 	}
+ 	(*pos)++;
+ 	return NULL;
+--- a/net/netfilter/nf_conntrack_proto_tcp.c
++++ b/net/netfilter/nf_conntrack_proto_tcp.c
+@@ -1619,9 +1619,6 @@
+ 	 */
+ 	tn->tcp_max_retrans = 3;
+ 
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	tn->offload_timeout = 30 * HZ;
+-#endif
+ }
+ 
+ const struct nf_conntrack_l4proto nf_conntrack_l4proto_tcp =
+--- a/net/netfilter/nf_conntrack_proto_udp.c
++++ b/net/netfilter/nf_conntrack_proto_udp.c
+@@ -272,9 +272,6 @@
+ 	for (i = 0; i < UDP_CT_MAX; i++)
+ 		un->timeouts[i] = udp_timeouts[i];
+ 
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	un->offload_timeout = 30 * HZ;
+-#endif
+ }
+ 
+ const struct nf_conntrack_l4proto nf_conntrack_l4proto_udp =
+--- a/net/netfilter/nf_conntrack_standalone.c
++++ b/net/netfilter/nf_conntrack_standalone.c
+@@ -578,18 +578,12 @@
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_TCP_CLOSE,
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_TCP_RETRANS,
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_TCP_UNACK,
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	NF_SYSCTL_CT_PROTO_TIMEOUT_TCP_OFFLOAD,
+-#endif
+ 	NF_SYSCTL_CT_PROTO_TCP_LOOSE,
+ 	NF_SYSCTL_CT_PROTO_TCP_LIBERAL,
+ 	NF_SYSCTL_CT_PROTO_TCP_IGNORE_INVALID_RST,
+ 	NF_SYSCTL_CT_PROTO_TCP_MAX_RETRANS,
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_UDP,
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_UDP_STREAM,
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	NF_SYSCTL_CT_PROTO_TIMEOUT_UDP_OFFLOAD,
+-#endif
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_ICMP,
+ 	NF_SYSCTL_CT_PROTO_TIMEOUT_ICMPV6,
+ #ifdef CONFIG_NF_CT_PROTO_SCTP
+@@ -766,14 +760,6 @@
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_jiffies,
+ 	},
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	[NF_SYSCTL_CT_PROTO_TIMEOUT_TCP_OFFLOAD] = {
+-		.procname	= "nf_flowtable_tcp_timeout",
+-		.maxlen		= sizeof(unsigned int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_jiffies,
+-	},
+-#endif
+ 	[NF_SYSCTL_CT_PROTO_TCP_LOOSE] = {
+ 		.procname	= "nf_conntrack_tcp_loose",
+ 		.maxlen		= sizeof(u8),
+@@ -816,14 +802,6 @@
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_jiffies,
+ 	},
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	[NF_SYSCTL_CT_PROTO_TIMEOUT_UDP_OFFLOAD] = {
+-		.procname	= "nf_flowtable_udp_timeout",
+-		.maxlen		= sizeof(unsigned int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_jiffies,
+-	},
+-#endif
+ 	[NF_SYSCTL_CT_PROTO_TIMEOUT_ICMP] = {
+ 		.procname	= "nf_conntrack_icmp_timeout",
+ 		.maxlen		= sizeof(unsigned int),
+@@ -1004,9 +982,6 @@
+ 	XASSIGN(IGNORE_INVALID_RST, &tn->tcp_ignore_invalid_rst);
+ #undef XASSIGN
+ 
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	table[NF_SYSCTL_CT_PROTO_TIMEOUT_TCP_OFFLOAD].data = &tn->offload_timeout;
+-#endif
+ 
+ }
+ 
+@@ -1094,9 +1069,6 @@
+ 	table[NF_SYSCTL_CT_PROTO_TIMEOUT_ICMPV6].data = &nf_icmpv6_pernet(net)->timeout;
+ 	table[NF_SYSCTL_CT_PROTO_TIMEOUT_UDP].data = &un->timeouts[UDP_CT_UNREPLIED];
+ 	table[NF_SYSCTL_CT_PROTO_TIMEOUT_UDP_STREAM].data = &un->timeouts[UDP_CT_REPLIED];
+-#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+-	table[NF_SYSCTL_CT_PROTO_TIMEOUT_UDP_OFFLOAD].data = &un->offload_timeout;
+-#endif
+ 
+ 	nf_conntrack_standalone_init_tcp_sysctl(net, table);
+ 	nf_conntrack_standalone_init_sctp_sysctl(net, table);
+--- a/net/netfilter/nf_tables_api.c
++++ b/net/netfilter/nf_tables_api.c
+@@ -27,6 +27,7 @@
+ #define NFT_SET_MAX_ANONLEN 16
+ 
+ unsigned int nf_tables_net_id __read_mostly;
++EXPORT_SYMBOL_GPL(nf_tables_net_id);
+ 
+ static LIST_HEAD(nf_tables_expressions);
+ static LIST_HEAD(nf_tables_objects);

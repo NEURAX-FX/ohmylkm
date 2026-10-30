@@ -1,5 +1,22 @@
 # ABI report — adapted module set
 
+## Software flow offload extension (current 19-module set)
+
+The earlier sections below document the basic 16-module run. The new set adds
+`nf_flow_table`, `nf_flow_table_inet`, and `nft_flow_offload`; all 19 pass the
+static verifier. In addition to the earlier 9 host types, `nf_tcp_net=60`,
+`nf_udp_net=8`, and `nf_ip_net=192` match the supplied target BTF exactly.
+An unadapted NF_FLOW_TABLE=m probe failed for net/netns_ct before the patch.
+Patch 0003 keeps statistics and TCP/UDP 30-second offload defaults in a
+flowtable-owned pernet allocation, and restores host struct layouts.
+The rebuilt core genuinely exports `nf_tables_net_id`; the expression must
+be used with that core, not the previously tested 16-module core. There are
+485 version records, 466 strong imports and 82 module exports in this set.
+Actual extracted functions passed a host-side allocation/cleanup/namespace
+isolation smoke; host interfaces were simulated, not actual packet processing.
+The user reports the previous basic package works on-device. The new software
+flow path remains device-untested; no device operations were performed here.
+
 ## 实际通过
 
 `output/abi-port/` 共 16 个 `.ko`；`scripts/verify.sh` 对真实文件检查结果为 PASS / 0 failures。原始宿主符号表不变。完整数据与每个 artifact SHA256：`abi-port-verification.json`。

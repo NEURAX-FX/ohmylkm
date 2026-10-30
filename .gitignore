@@ -45,6 +45,10 @@ nftables-mt6989/reports/abi-port-build-results.json
 nftables-mt6989/reports/quick-verify*.log
 nftables-mt6989/reports/quick-verify*.status
 
+# Local before/after probes and preserved known-working build evidence.
+nftables-mt6989/reports/basic-16/
+nftables-mt6989/reports/flow-*.json
+
 # ---- caches / editor / tooling ---------------------------------------------
 .codegraph/
 __pycache__/

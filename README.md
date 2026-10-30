@@ -4,15 +4,15 @@ Workspace for building and packaging Android kernel modules for MediaTek
 MT6989 (OnePlus Ace 5 Racing), based on the public OnePlus Linux 6.1 source.
 
 The current project is **`nftables-mt6989`**: native `nf_tables`/`nft_*`
-kernel modules for a target kernel that was built with `CONFIG_NF_TABLES=n`,
-plus a Magisk packaging layout and loader scripts.
+kernel modules for a target kernel built with `CONFIG_NF_TABLES=n`, including
+inet NAT and software flow offloading, plus Magisk packaging and loader scripts.
 
 ## Contents
 
 | Path | Purpose |
 |---|---|
-| `nftables-mt6989/` | Source-compatible nftables LKM project |
-| `nftables-mt6989/patches/` | Two required source patches (per-net generation state, inet NAT adapter) |
+| `nftables-mt6989/` | Source-compatible nftables LKM project (19 modules) |
+| `nftables-mt6989/patches/` | Three required source patches (generation state, inet NAT, private software-flow state) |
 | `nftables-mt6989/configs/` | Kbuild configuration fragment |
 | `nftables-mt6989/scripts/` | Pinned build, probe and verification tooling |
 | `nftables-mt6989/tests/` | Regression tests for scripts and generated ELF metadata |

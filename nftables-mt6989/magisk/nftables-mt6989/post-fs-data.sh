@@ -30,8 +30,9 @@ if [ "$(cat /proc/sys/kernel/modules_disabled 2>/dev/null || echo 0)" = "1" ]; t
 fi
 
 # Core first, then leaves; this is the verified dependency order
-# (FIB: common -> ipv4/ipv6 -> inet, REJECT: common -> family/inet).
-ORDER="nf_tables nft_ct nft_nat nft_chain_nat nft_masq nft_limit nft_redir nft_log nft_fib nft_reject nft_fib_ipv4 nft_reject_ipv4 nft_fib_ipv6 nft_reject_ipv6 nft_reject_inet nft_fib_inet"
+# (FIB: common -> ipv4/ipv6 -> inet, REJECT: common -> family/inet,
+# flow offload: flowtable core -> inet type -> nft expression).
+ORDER="nf_tables nft_ct nft_nat nft_chain_nat nft_masq nft_limit nft_redir nft_log nft_fib nft_reject nft_fib_ipv4 nft_reject_ipv4 nft_fib_ipv6 nft_reject_ipv6 nft_reject_inet nft_fib_inet nf_flow_table nf_flow_table_inet nft_flow_offload"
 
 fail=0
 for m in $ORDER; do

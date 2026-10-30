@@ -14,3 +14,6 @@ struct nf_conntrack_net probe_nf_conntrack_net;
 struct nf_ct_ext probe_nf_ct_ext;
 struct nf_hook_state probe_nf_hook_state;
 struct nf_hook_ops probe_nf_hook_ops;
+struct nf_tcp_net probe_nf_tcp_net;
+struct nf_udp_net probe_nf_udp_net;
+struct nf_ip_net probe_nf_ip_net;

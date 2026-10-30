@@ -1,5 +1,22 @@
 # Build report — final bounded native Kbuild
 
+## Current software flow offload extension
+
+The historical 16-module build below is retained as the basic baseline.
+New native Kbuild commands use -j2 and produce 19 modules. `nf_flow_table`
+and `nf_flow_table_inet` built immediately; `nft_flow_offload` first failed
+modpost for an unexported same-build `nf_tables_net_id`. Adding a legitimate
+GPL export to the core and rebuilding it plus the expression resolved this.
+No host symbol table was modified. Logs: `build-nf_flow_table.log`,
+`build-nf_flow_table_inet.log`, `build-nft_flow_offload.log` (initial failure),
+`flow-core-provider-rebuild.log`, and `flow-expression-rebuild.log` (exit 0).
+Final new layout probe: `abi-port-layout-probe-3.log`, exit 0. The strict
+verifier passes 19 modules and 12 host layouts; 22 regression tests pass.
+Working basic artifacts/trees are retained as `output/basic-16/`,
+`work/kernel-abi-basic`, `work/build-abi-basic` and `reports/basic-16/`.
+Local Magisk v1.1 package loads flowtable core -> inet type -> nft expression.
+It does not enable the hardware flag or alter any firewall4/UCI/nft rules.
+
 ## 已成功执行
 
 实际本轮 `python3 scripts/build.py`（与 build.sh 的 Python 入口相同）完成；原生 Kbuild 目标 **16/16 exit 0**。清单 `abi-port-build-results.json`，每个实际展开命令及状态 `logs/build-*-4.log` / `.status`。prepare 的 `olddefconfig` / `modules_prepare` 均成功：`logs/abi-port-{olddefconfig,modules-prepare}-3.log`。全部使用 `-j2`。

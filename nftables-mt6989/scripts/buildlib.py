@@ -23,6 +23,7 @@ ABI_OUT = WORK / 'build-abi-port'
 ABI_PATCHES = (
     '0001-preserve-struct-net-move-gencursor-to-pernet.patch',
     '0002-nft-chain-nat-inet-family-ops-adapter.patch',
+    '0003-flowtable-private-pernet-host-abi.patch',
 )
 ABI_PATCHED_FILES = (
     'include/net/net_namespace.h',
@@ -30,6 +31,14 @@ ABI_PATCHED_FILES = (
     'net/netfilter/nf_tables_api.c',
     'net/netfilter/nf_tables_core.c',
     'net/netfilter/nft_chain_nat.c',
+    'include/net/netns/conntrack.h',
+    'include/net/netns/flow_table.h',
+    'include/net/netfilter/nf_flow_table.h',
+    'net/netfilter/nf_flow_table_core.c',
+    'net/netfilter/nf_flow_table_procfs.c',
+    'net/netfilter/nf_conntrack_proto_tcp.c',
+    'net/netfilter/nf_conntrack_proto_udp.c',
+    'net/netfilter/nf_conntrack_standalone.c',
 )
 
 def require_hash(path, expected):
@@ -52,6 +61,9 @@ def preserve_host_config(original, modified):
                 'CONFIG_NF_DEFRAG', 'CONFIG_NETFILTER_NETLINK',
                 'CONFIG_NETFILTER_SYNPROXY', 'CONFIG_NET_ACT_CT', 'CONFIG_NF_FLOW_TABLE')
     for key in original.keys() | modified.keys():
+        if (key in ('CONFIG_NF_FLOW_TABLE', 'CONFIG_NF_FLOW_TABLE_INET') and
+                original.get(key, 'n') == 'n' and modified.get(key, 'n') == 'm'):
+            continue
         if key.startswith(prefixes) and original.get(key, 'n') != modified.get(key, 'n'):
             raise ValueError(f'host configuration drift: {key}: {original.get(key, "n")} -> {modified.get(key, "n")}')
 

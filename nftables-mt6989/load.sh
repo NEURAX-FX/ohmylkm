@@ -28,7 +28,7 @@ esac
 [ "${MODULES_DISABLED:-}" = "1" ] && fail "module loading globally disabled"
 
 # --- fixed load order -------------------------------------------------------
-ORDER="nf_tables nft_ct nft_nat nft_chain_nat nft_masq nft_limit nft_redir nft_log nft_fib nft_reject nft_fib_ipv4 nft_reject_ipv4 nft_fib_ipv6 nft_reject_ipv6 nft_reject_inet nft_fib_inet"
+ORDER="nf_tables nft_ct nft_nat nft_chain_nat nft_masq nft_limit nft_redir nft_log nft_fib nft_reject nft_fib_ipv4 nft_reject_ipv4 nft_fib_ipv6 nft_reject_ipv6 nft_reject_inet nft_fib_inet nf_flow_table nf_flow_table_inet nft_flow_offload"
 
 echo "live release : $LIVE_RELEASE"
 echo "modules.dep  :"
@@ -41,7 +41,7 @@ done
 [ "$DRY" = 1 ] && { echo "dry run ok, no module loaded"; exit 0; }
 
 echo
-echo "This will load 16 kernel modules on the running phone."
+echo "This will load 19 kernel modules on the running phone."
 printf 'Type y to continue: '
 read ans
 [ "$ans" = "y" ] || { echo "aborted"; exit 1; }
@@ -53,5 +53,5 @@ done
 
 echo
 echo "Loaded modules:"
-cat /proc/modules | grep -E '^(nf_tables|nft_)' || true
+cat /proc/modules | grep -E '^(nf_tables|nf_flow_table|nft_)' || true
 echo "Done. No ruleset was installed and no network configuration was changed."

@@ -1,0 +1,18 @@
+#!/sbin/sh
+# Delegate installation to the installed Magisk framework, not a custom installer.
+umask 022
+OUTFD=$2
+ZIPFILE=$3
+
+mount /data 2>/dev/null || true
+if [ ! -f /data/adb/magisk/util_functions.sh ]; then
+  echo '! Install this ZIP from Magisk 20.4 or newer.'
+  exit 1
+fi
+
+. /data/adb/magisk/util_functions.sh
+if [ "${MAGISK_VER_CODE:-0}" -lt 20400 ]; then
+  ui_print '! Magisk 20.4 or newer is required.'
+  exit 1
+fi
+install_module

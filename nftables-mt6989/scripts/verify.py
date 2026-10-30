@@ -23,20 +23,24 @@ EXPECTED_MODULES = (
     'nf_tables', 'nft_ct', 'nft_nat', 'nft_chain_nat', 'nft_masq', 'nft_limit',
     'nft_redir', 'nft_log', 'nft_fib', 'nft_reject', 'nft_fib_ipv4',
     'nft_reject_ipv4', 'nft_fib_ipv6', 'nft_reject_ipv6', 'nft_fib_inet',
-    'nft_reject_inet',
+    'nft_reject_inet', 'nf_flow_table', 'nf_flow_table_inet', 'nft_flow_offload',
 )
 EXPECTED_VERMAGIC = '6.1.115-android14-oki-xiaoxiaow SMP preempt mod_unload modversions aarch64'
 REQUIRED_LAYOUTS = ('net', 'module', 'netns_nf', 'netns_ct', 'nf_conn',
-                    'nf_conntrack_net', 'nf_ct_ext', 'nf_hook_state', 'nf_hook_ops')
+                    'nf_conntrack_net', 'nf_ct_ext', 'nf_hook_state', 'nf_hook_ops',
+                    'nf_tcp_net', 'nf_udp_net', 'nf_ip_net')
 FORBIDDEN_NAT_IMPORTS = frozenset(('nf_nat_inet_register_fn', 'nf_nat_inet_unregister_fn'))
 REQUIRED_ABI_CONFIG = {
     'CONFIG_MODVERSIONS': 'y', 'CONFIG_CFI_CLANG': 'y', 'CONFIG_LTO_NONE': 'y',
     'CONFIG_DEBUG_INFO_BTF': 'y', 'CONFIG_DEBUG_INFO_BTF_MODULES': 'y',
     'CONFIG_MODULE_ALLOW_BTF_MISMATCH': 'y', 'CONFIG_MODULE_SIG_FORCE': 'n',
+    'CONFIG_NF_FLOW_TABLE': 'm', 'CONFIG_NF_FLOW_TABLE_INET': 'm',
+    'CONFIG_NFT_FLOW_OFFLOAD': 'm', 'CONFIG_NF_FLOW_TABLE_PROCFS': 'n',
 }
 HOST_CONFIG_PREFIXES = ('CONFIG_NF_CONNTRACK', 'CONFIG_NF_CT_', 'CONFIG_NF_NAT',
                         'CONFIG_NF_DEFRAG', 'CONFIG_NETFILTER_NETLINK',
                         'CONFIG_NETFILTER_SYNPROXY', 'CONFIG_NET_ACT_CT', 'CONFIG_NF_FLOW_TABLE')
+FLOWTABLE_MODULE_CONFIG = frozenset(('CONFIG_NF_FLOW_TABLE', 'CONFIG_NF_FLOW_TABLE_INET'))
 LICENSES = frozenset(('EXPORT_SYMBOL', 'EXPORT_SYMBOL_GPL'))
 
 
@@ -780,6 +784,8 @@ def verify_tree(root, expectations):
         if current.get('CONFIG_NF_TABLES') != 'm':
             failures.append('build config CONFIG_NF_TABLES must be m')
         for key in original.keys() | current.keys():
+            if key in FLOWTABLE_MODULE_CONFIG and original.get(key, 'n') == 'n' and current.get(key) == 'm':
+                continue
             if key.startswith(HOST_CONFIG_PREFIXES) and original.get(key, 'n') != current.get(key, 'n'):
                 failures.append(f'host configuration drift: {key}: {original.get(key, "n")} -> {current.get(key, "n")}')
     except VerificationError as error:
@@ -813,7 +819,15 @@ def verify_tree(root, expectations):
             'work/kernel-abi-port/include/net/netfilter/nf_tables.h',
             'work/kernel-abi-port/net/netfilter/nf_tables_api.c',
             'work/kernel-abi-port/net/netfilter/nf_tables_core.c',
-            'work/kernel-abi-port/net/netfilter/nft_chain_nat.c'}
+            'work/kernel-abi-port/net/netfilter/nft_chain_nat.c',
+            'work/kernel-abi-port/include/net/netns/conntrack.h',
+            'work/kernel-abi-port/include/net/netns/flow_table.h',
+            'work/kernel-abi-port/include/net/netfilter/nf_flow_table.h',
+            'work/kernel-abi-port/net/netfilter/nf_flow_table_core.c',
+            'work/kernel-abi-port/net/netfilter/nf_flow_table_procfs.c',
+            'work/kernel-abi-port/net/netfilter/nf_conntrack_proto_tcp.c',
+            'work/kernel-abi-port/net/netfilter/nf_conntrack_proto_udp.c',
+            'work/kernel-abi-port/net/netfilter/nf_conntrack_standalone.c'}
         if set(bindings) != required_bindings:
             failures.append('probe/config/source binding manifest is incomplete or unexpected')
         for relative in required_bindings & bindings.keys():
